@@ -91,7 +91,7 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => AiAssistantPage(document: doc)),
         ),
-        icon: const Icon(Icons.auto_awesome),
+        icon: const Icon(Icons.psychology_outlined),
         label: const Text('Ask AI'),
       ),
     );

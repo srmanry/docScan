@@ -33,16 +33,17 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
   final ScanDocument _scanDocument;
   final SaveDocument _saveDocument;
   final ScanMultipleFromGallery _scanMultipleFromGallery;
+  final Ref _ref;
 
-  DocumentNotifier(this._scanDocument, this._saveDocument, this._scanMultipleFromGallery)
+  DocumentNotifier(this._scanDocument, this._saveDocument, this._scanMultipleFromGallery, this._ref)
       : super(const DocumentIdle());
 
   Future<void> scan(DocumentSourceType sourceType) async {
     state = const DocumentScanning();
     final result = await _scanDocument(ScanDocumentParams(sourceType));
-    result.fold(
-      (failure) => state = DocumentError(failure.message),
-      (document) => state = DocumentReady(document),
+    await result.fold(
+      (failure) async => state = DocumentError(failure.message),
+      _persistAndReady,
     );
   }
 
@@ -51,23 +52,28 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
   Future<void> scanMultipleFromGallery() async {
     state = const DocumentScanning();
     final result = await _scanMultipleFromGallery(const NoParams());
-    result.fold(
-      (failure) => state = DocumentError(failure.message),
-      (document) => state = DocumentReady(document),
+    await result.fold(
+      (failure) async => state = DocumentError(failure.message),
+      _persistAndReady,
     );
   }
 
-  Future<void> save(ScannedDocument document) async {
+  /// Saves the scanned document to local history so it survives app restarts
+  /// and shows up on the History tab.
+  Future<void> _persistAndReady(ScannedDocument document) async {
     final result = await _saveDocument(document);
     result.fold(
       (failure) => state = DocumentError(failure.message),
-      (_) => state = DocumentReady(document),
+      (_) {
+        _ref.invalidate(savedDocumentsProvider);
+        state = DocumentReady(document);
+      },
     );
   }
 }
 
 final documentProvider = StateNotifierProvider<DocumentNotifier, DocumentState>((ref) {
-  return DocumentNotifier(sl(), sl(), sl());
+  return DocumentNotifier(sl(), sl(), sl(), ref);
 });
 
 final savedDocumentsProvider = FutureProvider<List<ScannedDocument>>((ref) async {

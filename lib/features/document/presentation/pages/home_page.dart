@@ -38,7 +38,7 @@ class HomePage extends ConsumerWidget {
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.auto_awesome, color: theme.colorScheme.onPrimary, size: 18),
+              child: Icon(Icons.psychology_outlined, color: theme.colorScheme.onPrimary, size: 18),
             ),
             const SizedBox(width: 10),
             const Text('DocAI'),

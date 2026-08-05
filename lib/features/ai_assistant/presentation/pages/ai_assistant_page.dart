@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doc_sense/core/utils/tts_service.dart';
 import 'package:doc_sense/features/ai_assistant/presentation/providers/ai_provider.dart';
@@ -6,7 +7,7 @@ import 'package:doc_sense/features/document/domain/entities/scanned_document.dar
 
 const _languages = ['English', 'Bangla', 'Hindi', 'Arabic', 'Spanish', 'French'];
 
-enum _Action { summarize, translate }
+enum _Action { summarize, translate, ask }
 
 class AiAssistantPage extends ConsumerStatefulWidget {
   final ScannedDocument document;
@@ -42,6 +43,67 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     });
     ref.read(aiProvider.notifier).translate(widget.document.extractedText, language);
   }
+
+  Future<void> _promptAndAsk() async {
+    final question = await _promptQuestion();
+    if (question == null || question.isEmpty || !mounted) return;
+    setState(() {
+      _activeAction = _Action.ask;
+      _lastLanguage = null;
+    });
+    ref.read(aiProvider.notifier).ask(widget.document.extractedText, question);
+  }
+
+  Future<String?> _promptQuestion() {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ask about this document'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 4,
+          decoration: const InputDecoration(hintText: 'e.g. What is the total amount due?'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Ask'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
+    );
+  }
+
+  IconData _iconFor(_Action? action) => switch (action) {
+        _Action.summarize => Icons.summarize_outlined,
+        _Action.translate => Icons.translate,
+        _Action.ask => Icons.question_answer_outlined,
+        null => Icons.psychology_outlined,
+      };
+
+  String _labelFor(_Action? action) => switch (action) {
+        _Action.summarize => 'Summary',
+        _Action.translate => 'Translation',
+        _Action.ask => 'Answer',
+        null => 'Response',
+      };
+
+  /// Turns Gemini's "* bullet" lines into a proper bullet glyph.
+  String _tidyBullets(String text) => text.replaceAll(RegExp(r'^\*\s+', multiLine: true), '•  ');
 
   Future<void> _toggleSpeak(String text) async {
     if (_tts.isSpeaking) {
@@ -127,29 +189,34 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Wrap(
-              spacing: 10,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
               children: [
-                ChoiceChip(
-                  avatar: Icon(Icons.summarize_outlined,
-                      size: 18,
-                      color: _activeAction == _Action.summarize
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.primary),
-                  label: const Text('Summarize'),
-                  selected: _activeAction == _Action.summarize,
-                  onSelected: (_) => _pickLanguageAndSummarize(),
+                Expanded(
+                  child: _ActionTile(
+                    icon: Icons.summarize_outlined,
+                    label: 'Summarize',
+                    selected: _activeAction == _Action.summarize,
+                    onTap: _pickLanguageAndSummarize,
+                  ),
                 ),
-                ChoiceChip(
-                  avatar: Icon(Icons.translate,
-                      size: 18,
-                      color: _activeAction == _Action.translate
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.primary),
-                  label: const Text('Translate'),
-                  selected: _activeAction == _Action.translate,
-                  onSelected: (_) => _pickLanguageAndTranslate(),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionTile(
+                    icon: Icons.translate,
+                    label: 'Translate',
+                    selected: _activeAction == _Action.translate,
+                    onTap: _pickLanguageAndTranslate,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionTile(
+                    icon: Icons.question_answer_outlined,
+                    label: 'Ask',
+                    selected: _activeAction == _Action.ask,
+                    onTap: _promptAndAsk,
+                  ),
                 ),
               ],
             ),
@@ -160,11 +227,47 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
               AiLoading() => const Center(child: CircularProgressIndicator()),
               AiSuccess(:final response) => SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text(response.content, style: theme.textTheme.bodyLarge),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          children: [
+                            Icon(_iconFor(_activeAction), size: 16, color: theme.colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              _labelFor(_activeAction),
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.copy_outlined, size: 18),
+                              tooltip: 'Copy',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => _copyToClipboard(response.content),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                        ),
+                        child: _MarkdownLiteText(
+                          _tidyBullets(response.content),
+                          style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               AiError(:final message) => _ErrorState(theme: theme, message: message),
@@ -195,17 +298,90 @@ class _EmptyState extends StatelessWidget {
                 color: theme.colorScheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.auto_awesome, size: 40, color: theme.colorScheme.primary),
+              child: Icon(Icons.psychology_outlined, size: 40, color: theme.colorScheme.primary),
             ),
             const SizedBox(height: 20),
             Text('Choose an action above', style: theme.textTheme.titleMedium),
             const SizedBox(height: 6),
             Text(
-              'Summarize or translate this document with AI',
+              'Summarize, translate, or ask a question about this document',
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Renders `**bold**` markers from the AI response as actual bold text,
+/// without pulling in a full markdown package for one formatting rule.
+class _MarkdownLiteText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+  const _MarkdownLiteText(this.text, {this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final boldStyle = style?.copyWith(fontWeight: FontWeight.w700);
+    final spans = <TextSpan>[];
+    final pattern = RegExp(r'\*\*(.+?)\*\*');
+    var cursor = 0;
+    for (final match in pattern.allMatches(text)) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, match.start)));
+      }
+      spans.add(TextSpan(text: match.group(1), style: boldStyle));
+      cursor = match.end;
+    }
+    if (cursor < text.length) {
+      spans.add(TextSpan(text: text.substring(cursor)));
+    }
+    return RichText(text: TextSpan(style: style, children: spans));
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final fg = selected ? theme.colorScheme.onPrimary : theme.colorScheme.primary;
+
+    return Material(
+      color: selected ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: fg),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
