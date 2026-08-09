@@ -76,9 +76,34 @@ class LoginPage extends ConsumerWidget {
                               foregroundColor: theme.colorScheme.primary,
                             ),
                             onPressed: () => ref.read(authProvider.notifier).signInWithGoogle(),
-                            icon: const Icon(Icons.g_mobiledata, size: 26),
+                            icon: const Icon(Icons.g_mobiledata, size: 28),
                             label: const Text('Continue with Google'),
                           ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: state is AuthLoading
+                          ? null
+                          : () => ref.read(authProvider.notifier).signInAnonymously(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        side: BorderSide(
+                          color: theme.colorScheme.onPrimary.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      icon: const Icon(Icons.person_outline),
+                      label: const Text('Continue as Guest'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Use Google for stable account tracking. Guest mode is only for testing.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimary.withValues(alpha: 0.82),
+                    ),
                   ),
                 ],
               ),

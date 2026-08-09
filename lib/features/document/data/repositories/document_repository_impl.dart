@@ -50,9 +50,10 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required DocumentSourceType sourceType,
   }) async {
     try {
-      final text = sourceType == DocumentSourceType.textFile
+      final rawText = sourceType == DocumentSourceType.textFile
           ? await textFile.extractText(filePath)
           : await ocr.recognizeText(filePath);
+      final text = _normalizeExtractedText(rawText);
       final language =
           sourceType == DocumentSourceType.textFile ? null : await ocr.detectLanguage(text);
       return Right(DocumentModel(
@@ -67,6 +68,17 @@ class DocumentRepositoryImpl implements DocumentRepository {
     } on OcrException catch (e) {
       return Left(OcrFailure(e.message));
     }
+  }
+
+  String _normalizeExtractedText(String text) {
+    final normalizedNewlines = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final lines = normalizedNewlines.split('\n');
+    final cleaned = lines
+        .map((line) => line.replaceAll(RegExp(r'[ \t]+$'), ''))
+        .map((line) => line.replaceFirst(RegExp(r'^\s*\*\s+'), '• '))
+        .toList();
+
+    return cleaned.join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
   }
 
   @override

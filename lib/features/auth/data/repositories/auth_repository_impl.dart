@@ -11,6 +11,10 @@ class AuthRepositoryImpl implements AuthRepository {
   const AuthRepositoryImpl(this.remoteDataSource);
 
   @override
+  Future<Either<Failure, AppUser>> signInAnonymously() =>
+      _run(remoteDataSource.signInAnonymously);
+
+  @override
   Future<Either<Failure, AppUser>> signInWithGoogle() => _run(remoteDataSource.signInWithGoogle);
 
   @override

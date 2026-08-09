@@ -3,6 +3,7 @@ import 'package:doc_sense/core/di/injection_container.dart';
 import 'package:doc_sense/core/usecase/usecase.dart';
 import 'package:doc_sense/features/auth/domain/entities/app_user.dart';
 import 'package:doc_sense/features/auth/domain/usecases/get_current_user.dart';
+import 'package:doc_sense/features/auth/domain/usecases/sign_in_anonymously.dart';
 import 'package:doc_sense/features/auth/domain/usecases/sign_in_with_google.dart';
 import 'package:doc_sense/features/auth/domain/usecases/sign_out.dart';
 
@@ -33,11 +34,12 @@ class AuthError extends AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
+  final SignInAnonymously _signInAnonymously;
   final SignInWithGoogle _signInWithGoogle;
   final SignOut _signOut;
   final GetCurrentUser _getCurrentUser;
 
-  AuthNotifier(this._signInWithGoogle, this._signOut, this._getCurrentUser)
+  AuthNotifier(this._signInAnonymously, this._signInWithGoogle, this._signOut, this._getCurrentUser)
       : super(const AuthInitial()) {
     _restoreSession();
   }
@@ -47,6 +49,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     result.fold(
       (failure) => state = AuthError(failure.message),
       (user) => state = user != null ? AuthAuthenticated(user) : const AuthUnauthenticated(),
+    );
+  }
+
+  Future<void> signInAnonymously() async {
+    state = const AuthLoading();
+    final result = await _signInAnonymously(const NoParams());
+    result.fold(
+      (failure) => state = AuthError(failure.message),
+      (user) => state = AuthAuthenticated(user),
     );
   }
 
@@ -69,5 +80,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(sl(), sl(), sl());
+  return AuthNotifier(sl(), sl(), sl(), sl());
 });

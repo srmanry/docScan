@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:doc_sense/features/auth/domain/entities/app_user.dart';
 
 /// Data-layer representation of a user, aware of JSON / Firestore shape.
@@ -17,6 +18,14 @@ class UserModel extends AppUser {
         displayName: json['displayName'] as String?,
         photoUrl: json['photoUrl'] as String?,
         isPremium: json['isPremium'] as bool? ?? false,
+      );
+
+  factory UserModel.fromFirebaseUser(User user) => UserModel(
+        id: user.uid,
+        email: user.email ?? '',
+        displayName: user.displayName ?? (user.isAnonymous ? 'Guest User' : null),
+        photoUrl: user.photoURL,
+        isPremium: false,
       );
 
   Map<String, dynamic> toJson() => {

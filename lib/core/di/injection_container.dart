@@ -4,6 +4,7 @@ import 'package:doc_sense/features/auth/data/datasources/auth_remote_data_source
 import 'package:doc_sense/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:doc_sense/features/auth/domain/repositories/auth_repository.dart';
 import 'package:doc_sense/features/auth/domain/usecases/get_current_user.dart';
+import 'package:doc_sense/features/auth/domain/usecases/sign_in_anonymously.dart';
 import 'package:doc_sense/features/auth/domain/usecases/sign_in_with_google.dart';
 import 'package:doc_sense/features/auth/domain/usecases/sign_out.dart';
 
@@ -34,6 +35,7 @@ Future<void> initDependencies() async {
   // ---- Auth feature ----
   sl.registerLazySingleton<AuthRemoteDataSource>(() => AuthRemoteDataSourceImpl());
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
+  sl.registerFactory(() => SignInAnonymously(sl()));
   sl.registerFactory(() => SignInWithGoogle(sl()));
   sl.registerFactory(() => SignOut(sl()));
   sl.registerFactory(() => GetCurrentUser(sl()));

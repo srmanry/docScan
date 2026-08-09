@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doc_sense/features/auth/presentation/providers/auth_provider.dart';
+import 'package:doc_sense/features/subscription/presentation/pages/subscription_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -14,6 +15,26 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
+          Text(
+            'PLAN',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.workspace_premium_outlined, color: theme.colorScheme.primary),
+              title: const Text('Subscription'),
+              subtitle: const Text('Capped monthly plans to avoid unlimited loss'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           Text(
             'PREFERENCES',
             style: theme.textTheme.labelMedium?.copyWith(
