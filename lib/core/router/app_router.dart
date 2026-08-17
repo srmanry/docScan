@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:doc_sense/core/widgets/app_bottom_nav.dart';
 import 'package:doc_sense/features/auth/presentation/pages/login_page.dart';
 import 'package:doc_sense/features/auth/presentation/providers/auth_provider.dart';
 import 'package:doc_sense/features/document/presentation/pages/home_page.dart';
@@ -33,30 +34,43 @@ class _AuthListenable extends ChangeNotifier {
   }
 }
 
+/// Which bottom-nav tab is active. Exposed as a provider (rather than local
+/// state) so pages nested inside a tab — e.g. Home's "See All" — can switch
+/// tabs without the shell needing to hand them a callback.
+final rootTabIndexProvider = StateProvider<int>((ref) => 0);
+
 /// Bottom-nav shell for the three primary destinations once signed in.
-class _RootShell extends StatefulWidget {
+class _RootShell extends ConsumerWidget {
   const _RootShell();
-
-  @override
-  State<_RootShell> createState() => _RootShellState();
-}
-
-class _RootShellState extends State<_RootShell> {
-  int _index = 0;
 
   static const _pages = [HomePage(), HistoryPage(), SettingsPage()];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final index = ref.watch(rootTabIndexProvider);
+
     return Scaffold(
-      body: _pages[_index],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.history_outlined), label: 'History'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+      extendBody: true,
+      body: _pages[index],
+      bottomNavigationBar: AppBottomNav(
+        selectedIndex: index,
+        onDestinationSelected: (i) => ref.read(rootTabIndexProvider.notifier).state = i,
+        items: const [
+          AppBottomNavItem(
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_rounded,
+            label: 'Home',
+          ),
+          AppBottomNavItem(
+            icon: Icons.history_outlined,
+            activeIcon: Icons.history_rounded,
+            label: 'History',
+          ),
+          AppBottomNavItem(
+            icon: Icons.settings_outlined,
+            activeIcon: Icons.settings_rounded,
+            label: 'Settings',
+          ),
         ],
       ),
     );

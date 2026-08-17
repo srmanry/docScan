@@ -4,30 +4,30 @@ import 'package:doc_sense/core/usecase/usecase.dart';
 import 'package:doc_sense/features/document/domain/entities/scanned_document.dart';
 import 'package:doc_sense/features/document/domain/repositories/document_repository.dart';
 
-/// Orchestrates: pick one or more gallery images -> OCR each -> combine into
-/// a single [ScannedDocument].
-class ScanMultipleFromGallery implements UseCase<ScannedDocument, NoParams> {
+class ExtractMultipleDocumentsTextParams {
+  final List<String> filePaths;
+  const ExtractMultipleDocumentsTextParams(this.filePaths);
+}
+
+/// Runs OCR on each already-picked image and combines the results into a
+/// single [ScannedDocument] — the second half of what [PickMultipleImages]
+/// deliberately left undone.
+class ExtractMultipleDocumentsText
+    implements UseCase<ScannedDocument, ExtractMultipleDocumentsTextParams> {
   final DocumentRepository repository;
 
-  const ScanMultipleFromGallery(this.repository);
+  const ExtractMultipleDocumentsText(this.repository);
 
   @override
-  Future<Either<Failure, ScannedDocument>> call(NoParams params) async {
-    final pathsResult = await repository.pickMultipleFromGallery();
-    if (pathsResult is Left<Failure, List<String>>) {
-      return Left(pathsResult.value);
-    }
-    final paths = (pathsResult as Right<Failure, List<String>>).value;
-
+  Future<Either<Failure, ScannedDocument>> call(ExtractMultipleDocumentsTextParams params) async {
     final texts = <String>[];
     String? language;
     var lastPath = '';
-    for (final path in paths) {
+
+    for (final path in params.filePaths) {
       final extracted =
           await repository.extractText(filePath: path, sourceType: DocumentSourceType.gallery);
-      if (extracted is Left<Failure, ScannedDocument>) {
-        return Left(extracted.value);
-      }
+      if (extracted is Left<Failure, ScannedDocument>) return Left(extracted.value);
       final doc = (extracted as Right<Failure, ScannedDocument>).value;
       texts.add(doc.extractedText);
       language ??= doc.detectedLanguage;
@@ -36,7 +36,9 @@ class ScanMultipleFromGallery implements UseCase<ScannedDocument, NoParams> {
 
     return Right(ScannedDocument(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      title: paths.length == 1 ? paths.first.split('/').last : '${paths.length} imported photos',
+      title: params.filePaths.length == 1
+          ? params.filePaths.first.split('/').last
+          : '${params.filePaths.length} imported photos',
       sourceType: DocumentSourceType.gallery,
       filePath: lastPath,
       extractedText: texts.join('\n\n--- Page Break ---\n\n'),

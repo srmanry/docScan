@@ -176,7 +176,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ask AI'),
+        title: const Text('Ask'),
         actions: [
           if (state case AiSuccess(:final response))
             IconButton(

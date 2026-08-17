@@ -15,10 +15,12 @@ import 'package:doc_sense/features/document/data/datasources/text_file_data_sour
 import 'package:doc_sense/features/document/data/repositories/document_repository_impl.dart';
 import 'package:doc_sense/features/document/domain/repositories/document_repository.dart';
 import 'package:doc_sense/features/document/domain/usecases/delete_document.dart';
+import 'package:doc_sense/features/document/domain/usecases/extract_document_text.dart';
+import 'package:doc_sense/features/document/domain/usecases/extract_multiple_documents_text.dart';
 import 'package:doc_sense/features/document/domain/usecases/get_saved_documents.dart';
+import 'package:doc_sense/features/document/domain/usecases/pick_document.dart';
+import 'package:doc_sense/features/document/domain/usecases/pick_multiple_images.dart';
 import 'package:doc_sense/features/document/domain/usecases/save_document.dart';
-import 'package:doc_sense/features/document/domain/usecases/scan_document.dart';
-import 'package:doc_sense/features/document/domain/usecases/scan_multiple_from_gallery.dart';
 
 import 'package:doc_sense/features/ai_assistant/data/datasources/ai_remote_data_source.dart';
 import 'package:doc_sense/features/ai_assistant/data/repositories/ai_repository_impl.dart';
@@ -48,8 +50,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DocumentRepository>(
     () => DocumentRepositoryImpl(mediaPicker: sl(), ocr: sl(), textFile: sl(), local: sl()),
   );
-  sl.registerFactory(() => ScanDocument(sl()));
-  sl.registerFactory(() => ScanMultipleFromGallery(sl()));
+  sl.registerFactory(() => PickDocument(sl()));
+  sl.registerFactory(() => ExtractDocumentText(sl()));
+  sl.registerFactory(() => PickMultipleImages(sl()));
+  sl.registerFactory(() => ExtractMultipleDocumentsText(sl()));
   sl.registerFactory(() => SaveDocument(sl()));
   sl.registerFactory(() => GetSavedDocuments(sl()));
   sl.registerFactory(() => DeleteDocument(sl()));

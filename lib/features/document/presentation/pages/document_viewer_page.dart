@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:doc_sense/core/theme/app_theme.dart';
+import 'package:doc_sense/core/utils/text_structure.dart';
 import 'package:doc_sense/core/utils/tts_service.dart';
 import 'package:doc_sense/features/ai_assistant/presentation/pages/ai_assistant_page.dart';
 import 'package:doc_sense/features/document/domain/entities/scanned_document.dart';
@@ -77,10 +79,9 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
               child: Card(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: SelectableText(
-                    doc.extractedText.isEmpty ? 'No text was found in this document.' : doc.extractedText,
-                    style: theme.textTheme.bodyLarge,
-                  ),
+                  child: doc.extractedText.isEmpty
+                      ? Text('No text was found in this document.', style: theme.textTheme.bodyLarge)
+                      : _StructuredText(text: doc.extractedText, baseStyle: theme.textTheme.bodyLarge),
                 ),
               ),
             ),
@@ -92,8 +93,48 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
           MaterialPageRoute(builder: (_) => AiAssistantPage(document: doc)),
         ),
         icon: const Icon(Icons.psychology_outlined),
-        label: const Text('Ask AI'),
+        label: const Text('Ask'),
       ),
     );
+  }
+}
+
+/// Renders extracted text with light structure — bullets, "Label: value"
+/// pairs, and recognized section headers get styled; everything else stays
+/// exactly as plain text so an unrecognized line never loses content.
+class _StructuredText extends StatelessWidget {
+  final String text;
+  final TextStyle? baseStyle;
+  const _StructuredText({required this.text, required this.baseStyle});
+
+  @override
+  Widget build(BuildContext context) {
+    final blocks = parseDocumentText(text);
+    final spans = <InlineSpan>[];
+
+    for (var i = 0; i < blocks.length; i++) {
+      final block = blocks[i];
+      switch (block) {
+        case HeadingBlock(:final text):
+          if (i != 0) spans.add(const TextSpan(text: '\n'));
+          spans.add(TextSpan(
+            text: '$text\n',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: AppColors.buntOrange,
+              fontSize: (baseStyle?.fontSize ?? 16) + 2,
+            ),
+          ));
+        case KeyValueBlock(:final label, :final value):
+          spans.add(TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w700)));
+          spans.add(TextSpan(text: '$value\n'));
+        case BulletBlock(:final text):
+          spans.add(TextSpan(text: '•  $text\n'));
+        case LineBlock(:final text):
+          spans.add(TextSpan(text: '$text\n'));
+      }
+    }
+
+    return SelectableText.rich(TextSpan(children: spans, style: baseStyle));
   }
 }

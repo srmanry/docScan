@@ -1,4 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// Brand palette from the Docora Figma file (Styles panel). Named to match
+/// the Figma color-style names 1:1 so design and code stay in sync.
+class AppColors {
+  AppColors._();
+
+  static const buntOrange = Color(0xFFF2622C); // primary brand / hero card
+  static const coralGlass = Color(0xFFF89E7B); // gradient accent on the hero card
+  static const peachMist = Color(0xFFFBE4D8); // tag chips / soft container fill
+  static const ink = Color(0xFF191715); // primary text
+  static const warmWhite = Color(0xFFFFFDFB); // card surfaces
+  static const surface = Color(0xFFFBF1EA); // screen background
+  static const softBorder = Color(0xFFF0E0D4); // hairlines / outlines
+  static const aiViolet = Color(0xFF7C6FE0); // AI-assistant accent
+}
 
 /// Central design system: one seed color drives the whole Material 3 palette,
 /// component themes below just tune shape/spacing so every screen shares the
@@ -6,14 +22,27 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const _seed = Color(0xFF4F46E5); // indigo — matches the app's icon/branding
+  static const _seed = AppColors.buntOrange;
   static const _radius = 16.0;
 
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
-    final colorScheme = ColorScheme.fromSeed(seedColor: _seed, brightness: brightness);
+    final colorScheme = brightness == Brightness.light
+        ? ColorScheme.fromSeed(seedColor: _seed, brightness: brightness).copyWith(
+            primary: AppColors.buntOrange,
+            secondary: AppColors.coralGlass,
+            tertiary: AppColors.aiViolet,
+            surface: AppColors.surface,
+            surfaceContainerHigh: AppColors.warmWhite,
+            surfaceContainerHighest: AppColors.warmWhite,
+            primaryContainer: AppColors.peachMist,
+            onPrimaryContainer: AppColors.buntOrange,
+            outlineVariant: AppColors.softBorder,
+            onSurface: AppColors.ink,
+          )
+        : ColorScheme.fromSeed(seedColor: _seed, brightness: brightness);
 
     return ThemeData(
       useMaterial3: true,
@@ -28,17 +57,21 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.k2d(
           color: colorScheme.onSurface,
           fontSize: 22,
           fontWeight: FontWeight.w700,
         ),
       ),
 
+      // K2D is the brand heading font (Figma "Quick Actions" style: K2D,
+      // weight 500, 20px) — applied to headings/titles only, body text keeps
+      // the platform default for readability at small sizes.
       textTheme: ThemeData(brightness: brightness).textTheme.copyWith(
-            headlineMedium: const TextStyle(fontWeight: FontWeight.w800),
-            titleLarge: const TextStyle(fontWeight: FontWeight.w700),
-            titleMedium: const TextStyle(fontWeight: FontWeight.w600),
+            headlineMedium: GoogleFonts.k2d(fontWeight: FontWeight.w700),
+            titleLarge: GoogleFonts.k2d(fontWeight: FontWeight.w500),
+            titleMedium: GoogleFonts.k2d(fontWeight: FontWeight.w500),
+            titleSmall: GoogleFonts.k2d(fontWeight: FontWeight.w500),
             bodyLarge: const TextStyle(height: 1.4),
             bodyMedium: const TextStyle(height: 1.4),
           ),
