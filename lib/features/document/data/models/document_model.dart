@@ -8,36 +8,44 @@ class DocumentModel extends ScannedDocument {
     required super.filePath,
     required super.extractedText,
     super.detectedLanguage,
+    super.isFavorite,
+    super.isImportant,
     required super.createdAt,
   });
 
   factory DocumentModel.fromJson(Map<String, dynamic> json) => DocumentModel(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        sourceType: DocumentSourceType.values.byName(json['sourceType'] as String),
-        filePath: json['filePath'] as String,
-        extractedText: json['extractedText'] as String,
-        detectedLanguage: json['detectedLanguage'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    title: json['title'] as String,
+    sourceType: DocumentSourceType.values.byName(json['sourceType'] as String),
+    filePath: json['filePath'] as String,
+    extractedText: json['extractedText'] as String,
+    detectedLanguage: json['detectedLanguage'] as String?,
+    isFavorite: (json['isFavorite'] as int? ?? 0) == 1,
+    isImportant: (json['isImportant'] as int? ?? 0) == 1,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'sourceType': sourceType.name,
-        'filePath': filePath,
-        'extractedText': extractedText,
-        'detectedLanguage': detectedLanguage,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'sourceType': sourceType.name,
+    'filePath': filePath,
+    'extractedText': extractedText,
+    'detectedLanguage': detectedLanguage,
+    'isFavorite': isFavorite ? 1 : 0,
+    'isImportant': isImportant ? 1 : 0,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory DocumentModel.fromEntity(ScannedDocument doc) => DocumentModel(
-        id: doc.id,
-        title: doc.title,
-        sourceType: doc.sourceType,
-        filePath: doc.filePath,
-        extractedText: doc.extractedText,
-        detectedLanguage: doc.detectedLanguage,
-        createdAt: doc.createdAt,
-      );
+    id: doc.id,
+    title: doc.title,
+    sourceType: doc.sourceType,
+    filePath: doc.filePath,
+    extractedText: doc.extractedText,
+    detectedLanguage: doc.detectedLanguage,
+    isFavorite: doc.isFavorite,
+    isImportant: doc.isImportant,
+    createdAt: doc.createdAt,
+  );
 }

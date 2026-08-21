@@ -16,12 +16,7 @@ class AppBottomNav extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
   final List<AppBottomNavItem> items;
 
-  const AppBottomNav({
-    super.key,
-    required this.selectedIndex,
-    required this.onDestinationSelected,
-    required this.items,
-  });
+  const AppBottomNav({super.key, required this.selectedIndex, required this.onDestinationSelected, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -31,25 +26,15 @@ class AppBottomNav extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.warmWhite,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.softBorder),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.ink.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8))],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             for (var i = 0; i < items.length; i++)
-              _NavItem(
-                item: items[i],
-                selected: i == selectedIndex,
-                onTap: () => onDestinationSelected(i),
-              ),
+              _NavItem(item: items[i], selected: i == selectedIndex, onTap: () => onDestinationSelected(i)),
           ],
         ),
       ),
@@ -66,29 +51,31 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(20),
+      //borderRadius: BorderRadius.circular(50),
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: EdgeInsets.symmetric(horizontal: selected ? 18 : 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.buntOrange : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              selected ? item.activeIcon : item.icon,
-              color: selected ? Colors.white : AppColors.ink.withValues(alpha: 0.45),
-              size: 22,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: selected ? AppColors.buntOrange : Colors.transparent, shape: BoxShape.circle),
+              alignment: Alignment.center,
+              child: Icon(
+                selected ? item.activeIcon : item.icon,
+                color: selected ? Colors.white : AppColors.ink.withValues(alpha: 0.45),
+                size: 22,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               item.label,
               style: TextStyle(
-                color: selected ? Colors.white : AppColors.ink.withValues(alpha: 0.45),
+                color: selected ? AppColors.buntOrange : AppColors.ink.withValues(alpha: 0.45),
                 fontWeight: FontWeight.w700,
                 fontSize: 11,
               ),

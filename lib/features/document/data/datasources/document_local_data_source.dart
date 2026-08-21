@@ -27,7 +27,7 @@ class DocumentLocalDataSourceImpl implements DocumentLocalDataSource {
     final dbPath = p.join(await getDatabasesPath(), _dbName);
     return openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
       onCreate: (db, version) => db.execute('''
         CREATE TABLE $_table (
           id TEXT PRIMARY KEY,
@@ -36,9 +36,21 @@ class DocumentLocalDataSourceImpl implements DocumentLocalDataSource {
           filePath TEXT NOT NULL,
           extractedText TEXT NOT NULL,
           detectedLanguage TEXT,
+          isFavorite INTEGER NOT NULL DEFAULT 0,
+          isImportant INTEGER NOT NULL DEFAULT 0,
           createdAt TEXT NOT NULL
         )
       '''),
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE $_table ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0',
+          );
+          await db.execute(
+            'ALTER TABLE $_table ADD COLUMN isImportant INTEGER NOT NULL DEFAULT 0',
+          );
+        }
+      },
     );
   }
 

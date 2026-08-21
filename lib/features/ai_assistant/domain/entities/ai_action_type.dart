@@ -1,1 +1,9 @@
-enum AiActionType { summary, explain, translate, questionAnswer, grammarFix, flashcards, quiz }
+enum AiActionType {
+  summary,
+  explain,
+  translate,
+  questionAnswer,
+  grammarFix,
+  flashcards,
+  quiz,
+}

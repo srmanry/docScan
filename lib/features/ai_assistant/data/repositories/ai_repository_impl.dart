@@ -4,6 +4,7 @@ import 'package:doc_sense/core/error/failures.dart';
 import 'package:doc_sense/features/ai_assistant/data/datasources/ai_remote_data_source.dart';
 import 'package:doc_sense/features/ai_assistant/domain/entities/ai_action_type.dart';
 import 'package:doc_sense/features/ai_assistant/domain/entities/ai_response.dart';
+import 'package:doc_sense/features/ai_assistant/domain/entities/chat_turn.dart';
 import 'package:doc_sense/features/ai_assistant/domain/repositories/ai_repository.dart';
 
 class AiRepositoryImpl implements AiRepository {
@@ -12,29 +13,36 @@ class AiRepositoryImpl implements AiRepository {
   const AiRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, AiResponse>> summarize(String text, {String? language}) => _run(
-        AiActionType.summary,
-        () => remoteDataSource.summarize(text, language: language),
-      );
+  Future<Either<Failure, AiResponse>> summarize(
+    String text, {
+    String? language,
+  }) => _run(
+    AiActionType.summary,
+    () => remoteDataSource.summarize(text, language: language),
+  );
 
   @override
-  Future<Either<Failure, AiResponse>> explain(String text) => _run(
-        AiActionType.explain,
-        () => remoteDataSource.explain(text),
-      );
+  Future<Either<Failure, AiResponse>> explain(String text) =>
+      _run(AiActionType.explain, () => remoteDataSource.explain(text));
 
   @override
-  Future<Either<Failure, AiResponse>> translate(String text, {required String targetLanguage}) =>
-      _run(
-        AiActionType.translate,
-        () => remoteDataSource.translate(text, targetLanguage),
-      );
+  Future<Either<Failure, AiResponse>> translate(
+    String text, {
+    required String targetLanguage,
+  }) => _run(
+    AiActionType.translate,
+    () => remoteDataSource.translate(text, targetLanguage),
+  );
 
   @override
-  Future<Either<Failure, AiResponse>> askQuestion(String context, String question) => _run(
-        AiActionType.questionAnswer,
-        () => remoteDataSource.answerQuestion(context, question),
-      );
+  Future<Either<Failure, AiResponse>> askQuestion(
+    String context,
+    String question, {
+    List<ChatTurn> history = const [],
+  }) => _run(
+    AiActionType.questionAnswer,
+    () => remoteDataSource.answerQuestion(context, question, history: history),
+  );
 
   Future<Either<Failure, AiResponse>> _run(
     AiActionType type,

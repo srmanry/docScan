@@ -95,7 +95,7 @@ class ReviewDocumentPage extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        [_typeLabel(sourceType), if (sizeLabel != null) sizeLabel].join(' • '),
+                        [_typeLabel(sourceType), ?sizeLabel].join(' • '),
                         style:
                             theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),

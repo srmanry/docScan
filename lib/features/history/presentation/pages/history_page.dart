@@ -10,7 +10,7 @@ import 'package:doc_sense/features/document/domain/entities/scanned_document.dar
 import 'package:doc_sense/features/document/presentation/pages/document_viewer_page.dart';
 import 'package:doc_sense/features/document/presentation/providers/document_provider.dart';
 
-enum _HistoryFilter { all, scanned, imported, favorites }
+enum _HistoryFilter { all, scanned, important, favorites }
 
 /// Lists previously scanned documents.
 /// Reuses the document feature's domain layer (GetSavedDocuments) rather
@@ -25,11 +25,7 @@ class HistoryPage extends ConsumerStatefulWidget {
 class _HistoryPageState extends ConsumerState<HistoryPage> {
   final _searchController = TextEditingController();
   _HistoryFilter _filter = _HistoryFilter.all;
-  bool _newestFirst = true;
-
-  // Favoriting isn't backed by a persisted field on ScannedDocument yet, so
-  // this stays in-memory for now (resets on app restart / list refresh).
-  final Set<String> _favoriteIds = {};
+  // bool _newestFirst = true;
 
   @override
   void dispose() {
@@ -38,19 +34,41 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 
   bool _matchesFilter(ScannedDocument doc) => switch (_filter) {
-        _HistoryFilter.all => true,
-        _HistoryFilter.scanned =>
-          doc.sourceType == DocumentSourceType.camera || doc.sourceType == DocumentSourceType.gallery,
-        _HistoryFilter.imported =>
-          doc.sourceType == DocumentSourceType.pdf || doc.sourceType == DocumentSourceType.textFile,
-        _HistoryFilter.favorites => _favoriteIds.contains(doc.id),
-      };
+    _HistoryFilter.all => true,
+    _HistoryFilter.scanned =>
+      doc.sourceType == DocumentSourceType.camera ||
+          doc.sourceType == DocumentSourceType.gallery,
+    _HistoryFilter.important => doc.isImportant,
+    _HistoryFilter.favorites => doc.isFavorite,
+  };
+
+  Future<void> _toggleFavorite(ScannedDocument doc) async {
+    final ok = await ref
+        .read(documentProvider.notifier)
+        .updateDocument(doc.copyWith(isFavorite: !doc.isFavorite));
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Could not update favorite')));
+  }
+
+  Future<void> _toggleImportant(ScannedDocument doc) async {
+    final ok = await ref
+        .read(documentProvider.notifier)
+        .updateDocument(doc.copyWith(isImportant: !doc.isImportant));
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Could not update important')));
+  }
 
   @override
   Widget build(BuildContext context) {
     final documentsAsync = ref.watch(savedDocumentsProvider);
     final authState = ref.watch(authProvider);
-    final photoUrl = authState is AuthAuthenticated ? authState.user.photoUrl : null;
+    final photoUrl = authState is AuthAuthenticated
+        ? authState.user.photoUrl
+        : null;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -72,9 +90,10 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _SearchAndSortRow(
                 controller: _searchController,
-                newestFirst: _newestFirst,
+                // newestFirst: _newestFirst,
                 onSearchChanged: () => setState(() {}),
-                onToggleSort: () => setState(() => _newestFirst = !_newestFirst),
+                // onToggleSort: () =>
+                //     setState(() => _newestFirst = !_newestFirst),
               ),
             ),
             Expanded(
@@ -83,12 +102,14 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                 error: (error, _) => Center(child: Text('$error')),
                 data: (documents) {
                   final query = _searchController.text.trim().toLowerCase();
-                  final filtered = documents.where(_matchesFilter).where((doc) {
-                    return query.isEmpty || doc.title.toLowerCase().contains(query);
-                  }).toList()
-                    ..sort((a, b) => _newestFirst
-                        ? b.createdAt.compareTo(a.createdAt)
-                        : a.createdAt.compareTo(b.createdAt));
+                  final filtered =
+                      documents.where(_matchesFilter).where((doc) {
+                        return query.isEmpty ||
+                            doc.title.toLowerCase().contains(query);
+                      }).toList()..sort(
+                        // Keep newest-first ordering only.
+                        (a, b) => b.createdAt.compareTo(a.createdAt),
+                      );
 
                   if (documents.isEmpty) {
                     return _EmptyState(
@@ -118,26 +139,36 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     );
   }
 
-  List<Widget> _buildGroupedList(List<ScannedDocument> documents, ThemeData theme) {
+  List<Widget> _buildGroupedList(
+    List<ScannedDocument> documents,
+    ThemeData theme,
+  ) {
     final widgets = <Widget>[];
     String? currentGroup;
     for (final doc in documents) {
       final group = formatDateGroup(doc.createdAt);
       if (group != currentGroup) {
-        if (currentGroup != null) widgets.add(const SizedBox(height: 20));
+        if (currentGroup != null) widgets.add(const SizedBox(height: 14));
         currentGroup = group;
-        widgets.add(Text(group, style: theme.textTheme.titleLarge));
-        widgets.add(const SizedBox(height: 10));
+        widgets.add(
+          Text(
+            group,
+            style: theme.textTheme.titleLarge?.copyWith(fontSize: 17),
+          ),
+        );
+        widgets.add(const SizedBox(height: 8));
       } else {
-        widgets.add(const SizedBox(height: 10));
+        widgets.add(const SizedBox(height: 8));
       }
-      widgets.add(_HistoryDocumentCard(
-        document: doc,
-        isFavorite: _favoriteIds.contains(doc.id),
-        onToggleFavorite: () => setState(() {
-          if (!_favoriteIds.add(doc.id)) _favoriteIds.remove(doc.id);
-        }),
-      ));
+      widgets.add(
+        _HistoryDocumentCard(
+          document: doc,
+          isFavorite: doc.isFavorite,
+          isImportant: doc.isImportant,
+          onToggleFavorite: () => _toggleFavorite(doc),
+          onToggleImportant: () => _toggleImportant(doc),
+        ),
+      );
     }
     return widgets;
   }
@@ -161,7 +192,9 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'All your scanned and imported documents',
-                style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -170,7 +203,9 @@ class _Header extends StatelessWidget {
           radius: 20,
           backgroundColor: theme.colorScheme.primaryContainer,
           backgroundImage: photoUrl != null ? NetworkImage(photoUrl!) : null,
-          child: photoUrl == null ? Icon(Icons.person_outline, color: theme.colorScheme.primary) : null,
+          child: photoUrl == null
+              ? Icon(Icons.person_outline, color: theme.colorScheme.primary)
+              : null,
         ),
       ],
     );
@@ -183,31 +218,44 @@ class _FilterChipsRow extends StatelessWidget {
   const _FilterChipsRow({required this.selected, required this.onSelected});
 
   static const _items = [
-    (filter: _HistoryFilter.all, icon: Icons.inventory_2_outlined, label: 'All'),
-    (filter: _HistoryFilter.scanned, icon: Icons.document_scanner_outlined, label: 'Scanned'),
-    (filter: _HistoryFilter.imported, icon: Icons.assignment_turned_in_outlined, label: 'Imported'),
-    (filter: _HistoryFilter.favorites, icon: Icons.star_rounded, label: 'Favorites'),
+    (
+      filter: _HistoryFilter.all,
+      icon: Icons.document_scanner_outlined,
+      label: 'All',
+    ),
+    (
+      filter: _HistoryFilter.important,
+      icon: Icons.star_rounded,
+      label: 'Important',
+    ),
+    (
+      filter: _HistoryFilter.favorites,
+      icon: Icons.favorite_border_rounded,
+      label: 'Favorites',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: _items.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final item = _items[i];
-          final isSelected = item.filter == selected;
-          return _FilterChip(
-            icon: item.icon,
-            label: item.label,
-            selected: isSelected,
-            onTap: () => onSelected(item.filter),
-          );
-        },
+        child: Row(
+          children: [
+            for (var i = 0; i < _items.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(
+                child: _FilterChip(
+                  icon: _items[i].icon,
+                  label: _items[i].label,
+                  selected: _items[i].filter == selected,
+                  onTap: () => onSelected(_items[i].filter),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -234,24 +282,34 @@ class _FilterChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: selected ? AppColors.buntOrange : AppColors.softBorder),
+            border: Border.all(
+              color: selected ? AppColors.buntOrange : AppColors.softBorder,
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: selected ? AppColors.buntOrange : AppColors.ink),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
                   color: selected ? AppColors.buntOrange : AppColors.ink,
                 ),
-              ),
-            ],
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: selected ? AppColors.buntOrange : AppColors.ink,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -261,59 +319,22 @@ class _FilterChip extends StatelessWidget {
 
 class _SearchAndSortRow extends StatelessWidget {
   final TextEditingController controller;
-  final bool newestFirst;
   final VoidCallback onSearchChanged;
-  final VoidCallback onToggleSort;
   const _SearchAndSortRow({
     required this.controller,
-    required this.newestFirst,
     required this.onSearchChanged,
-    required this.onToggleSort,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            onChanged: (_) => onSearchChanged(),
-            decoration: const InputDecoration(
-              hintText: 'Search documents...',
-              prefixIcon: Icon(Icons.search),
-              isDense: true,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Material(
-          color: AppColors.warmWhite,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: onToggleSort,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.softBorder),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Sort: ${newestFirst ? 'Newest' : 'Oldest'}',
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.swap_vert_rounded, size: 18, color: AppColors.buntOrange),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    return TextField(
+      controller: controller,
+      onChanged: (_) => onSearchChanged(),
+      decoration: const InputDecoration(
+        hintText: 'Search documents...',
+        prefixIcon: Icon(Icons.search),
+        isDense: true,
+      ),
     );
   }
 }
@@ -321,24 +342,75 @@ class _SearchAndSortRow extends StatelessWidget {
 class _HistoryDocumentCard extends StatelessWidget {
   final ScannedDocument document;
   final bool isFavorite;
+  final bool isImportant;
   final VoidCallback onToggleFavorite;
+  final VoidCallback onToggleImportant;
   const _HistoryDocumentCard({
     required this.document,
     required this.isFavorite,
+    required this.isImportant,
     required this.onToggleFavorite,
+    required this.onToggleImportant,
   });
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete document?'),
-        content: Text('"${document.title}" will be permanently removed.'),
+        backgroundColor: AppColors.warmWhite,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 22, 24, 8),
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+        title: Text(
+          'Delete document?',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          '"${document.title}" will be permanently removed.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            height: 1.45,
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          SizedBox(
+            width: double.infinity,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text('No'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.buntOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text('Yes'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -347,7 +419,9 @@ class _HistoryDocumentCard extends StatelessWidget {
     final ok = await ref.read(documentProvider.notifier).delete(document.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? 'Document deleted' : 'Could not delete document')),
+      SnackBar(
+        content: Text(ok ? 'Document deleted' : 'Could not delete document'),
+      ),
     );
   }
 
@@ -365,31 +439,37 @@ class _HistoryDocumentCard extends StatelessWidget {
 
     return Material(
       color: AppColors.warmWhite,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(15),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(15),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => DocumentViewerPage(document: document)),
+          MaterialPageRoute(
+            builder: (_) => DocumentViewerPage(document: document),
+          ),
         ),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(15),
             border: Border.all(color: AppColors.softBorder),
           ),
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: icon.background, borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.all(10),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: icon.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(8),
                 child: Image.asset(icon.asset, fit: BoxFit.contain),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       document.title,
@@ -397,59 +477,116 @@ class _HistoryDocumentCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       [
-                        if (sizeLabel != null) sizeLabel,
+                        ?sizeLabel,
                         formatDocumentTimestamp(document.createdAt),
                       ].join(' • '),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.peachMist,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        document.detectedLanguage ?? 'English',
-                        style: const TextStyle(
-                          color: AppColors.buntOrange,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              Column(
-                children: [
-                  IconButton(
-                    onPressed: onToggleFavorite,
-                    icon: Icon(
-                      isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                      color: AppColors.buntOrange,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  ),
-                  Consumer(
+              SizedBox(
+                width: 28,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Consumer(
                     builder: (context, ref, _) => PopupMenuButton<String>(
                       padding: EdgeInsets.zero,
-                      icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurfaceVariant, size: 20),
+                      position: PopupMenuPosition.under,
+                      child: Icon(
+                        Icons.more_vert,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
                       onSelected: (value) {
-                        if (value == 'delete') _confirmDelete(context, ref);
+                        if (value == 'favorite') {
+                          onToggleFavorite();
+                        } else if (value == 'important') {
+                          onToggleImportant();
+                        } else if (value == 'delete') {
+                          _confirmDelete(context, ref);
+                        }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        PopupMenuItem(
+                          value: 'favorite',
+                          child: Row(
+                            children: [
+                              Icon(
+                                isFavorite
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 18,
+                                color: isFavorite
+                                    ? AppColors.buntOrange
+                                    : AppColors.ink,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Favorite',
+                                style: TextStyle(
+                                  color: isFavorite
+                                      ? AppColors.buntOrange
+                                      : AppColors.ink,
+                                  fontWeight: isFavorite
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'important',
+                          child: Row(
+                            children: [
+                              Icon(
+                                isImportant
+                                    ? Icons.star_rounded
+                                    : Icons.star_border_rounded,
+                                size: 18,
+                                color: isImportant
+                                    ? AppColors.buntOrange
+                                    : AppColors.ink,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Important',
+                                style: TextStyle(
+                                  color: isImportant
+                                      ? AppColors.buntOrange
+                                      : AppColors.ink,
+                                  fontWeight: isImportant
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                                color: Colors.red,
+                              ),
+                              SizedBox(width: 10),
+                              Text('Delete'),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -463,7 +600,11 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  const _EmptyState({required this.icon, required this.title, required this.subtitle});
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +618,10 @@ class _EmptyState extends StatelessWidget {
             Container(
               width: 88,
               height: 88,
-              decoration: const BoxDecoration(color: AppColors.peachMist, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: AppColors.peachMist,
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 40, color: AppColors.buntOrange),
             ),
             const SizedBox(height: 20),
@@ -485,7 +629,9 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               subtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

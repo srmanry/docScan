@@ -79,7 +79,8 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
     final result = await _pickDocument(PickDocumentParams(sourceType));
     state = result.fold(
       (failure) => DocumentError(failure.message),
-      (filePath) => DocumentReviewing(filePath: filePath, sourceType: sourceType),
+      (filePath) =>
+          DocumentReviewing(filePath: filePath, sourceType: sourceType),
     );
   }
 
@@ -89,7 +90,10 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
     if (current is! DocumentReviewing) return;
     state = const DocumentScanning();
     final result = await _extractDocumentText(
-      ExtractDocumentTextParams(filePath: current.filePath, sourceType: current.sourceType),
+      ExtractDocumentTextParams(
+        filePath: current.filePath,
+        sourceType: current.sourceType,
+      ),
     );
     await result.fold(
       (failure) async => state = DocumentError(failure.message),
@@ -104,7 +108,8 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
     final result = await _pickMultipleImages(const NoParams());
     state = result.fold(
       (failure) => DocumentError(failure.message),
-      (paths) => paths.isEmpty ? const DocumentIdle() : DocumentReviewingPhotos(paths),
+      (paths) =>
+          paths.isEmpty ? const DocumentIdle() : DocumentReviewingPhotos(paths),
     );
   }
 
@@ -115,8 +120,10 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
     if (current is! DocumentReviewingPhotos) return;
     final result = await _pickMultipleImages(const NoParams());
     result.fold(
-      (failure) => null, // cancelling the picker shouldn't disrupt the review grid
-      (paths) => state = DocumentReviewingPhotos([...current.filePaths, ...paths]),
+      (failure) =>
+          null, // cancelling the picker shouldn't disrupt the review grid
+      (paths) =>
+          state = DocumentReviewingPhotos([...current.filePaths, ...paths]),
     );
   }
 
@@ -124,14 +131,18 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
   void removePhoto(String filePath) {
     final current = state;
     if (current is! DocumentReviewingPhotos) return;
-    state = DocumentReviewingPhotos(current.filePaths.where((p) => p != filePath).toList());
+    state = DocumentReviewingPhotos(
+      current.filePaths.where((p) => p != filePath).toList(),
+    );
   }
 
   /// Runs OCR on every reviewed photo and combines them into one document.
   /// No-op if nothing is under review.
   Future<void> extractReviewedPhotos() async {
     final current = state;
-    if (current is! DocumentReviewingPhotos || current.filePaths.isEmpty) return;
+    if (current is! DocumentReviewingPhotos || current.filePaths.isEmpty) {
+      return;
+    }
     state = const DocumentScanning();
     final result = await _extractMultipleDocumentsText(
       ExtractMultipleDocumentsTextParams(current.filePaths),
@@ -146,13 +157,10 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
   /// and shows up on the History tab.
   Future<void> _persistAndReady(ScannedDocument document) async {
     final result = await _saveDocument(document);
-    result.fold(
-      (failure) => state = DocumentError(failure.message),
-      (_) {
-        _ref.invalidate(savedDocumentsProvider);
-        state = DocumentReady(document);
-      },
-    );
+    result.fold((failure) => state = DocumentError(failure.message), (_) {
+      _ref.invalidate(savedDocumentsProvider);
+      state = DocumentReady(document);
+    });
   }
 
   /// Removes a document from history. Returns whether it succeeded so the
@@ -165,13 +173,29 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
       return true;
     });
   }
+
+  /// Persists document metadata changes such as favorite/important state.
+  Future<bool> updateDocument(ScannedDocument document) async {
+    final result = await _saveDocument(document);
+    return result.fold((failure) => false, (_) {
+      _ref.invalidate(savedDocumentsProvider);
+      return true;
+    });
+  }
 }
 
-final documentProvider = StateNotifierProvider<DocumentNotifier, DocumentState>((ref) {
-  return DocumentNotifier(sl(), sl(), sl(), sl(), sl(), sl(), ref);
-});
+final documentProvider = StateNotifierProvider<DocumentNotifier, DocumentState>(
+  (ref) {
+    return DocumentNotifier(sl(), sl(), sl(), sl(), sl(), sl(), ref);
+  },
+);
 
-final savedDocumentsProvider = FutureProvider<List<ScannedDocument>>((ref) async {
+final savedDocumentsProvider = FutureProvider<List<ScannedDocument>>((
+  ref,
+) async {
   final result = await sl<GetSavedDocuments>().call(const NoParams());
-  return result.fold((failure) => throw Exception(failure.message), (docs) => docs);
+  return result.fold(
+    (failure) => throw Exception(failure.message),
+    (docs) => docs,
+  );
 });

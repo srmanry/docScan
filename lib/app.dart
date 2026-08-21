@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doc_sense/core/constants/app_constants.dart';
 import 'package:doc_sense/core/router/app_router.dart';
@@ -16,6 +17,22 @@ class DocAiApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        final overlayStyle = theme.brightness == Brightness.dark
+            ? SystemUiOverlayStyle.light.copyWith(
+                statusBarColor: theme.scaffoldBackgroundColor,
+              )
+            : SystemUiOverlayStyle.dark.copyWith(
+                statusBarColor: theme.scaffoldBackgroundColor,
+                statusBarBrightness: Brightness.light,
+              );
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: overlayStyle,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       routerConfig: router,
     );
   }
