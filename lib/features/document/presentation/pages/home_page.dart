@@ -55,7 +55,11 @@ class HomePage extends ConsumerWidget {
     final state = ref.watch(documentProvider);
 
     return Scaffold(
+      extendBody: true,
+      // bottom: false so the list runs under the frosted nav bar instead of
+      // stopping above it.
       body: SafeArea(
+        bottom: false,
         child: switch (state) {
           DocumentPicking() => const Center(child: CircularProgressIndicator()),
           DocumentScanning() => const ScanningProgressView(),
@@ -276,7 +280,7 @@ class _RecentDocumentsSection extends ConsumerWidget {
 
               final recent = documents.take(3).toList();
               return ListView.separated(
-                padding: const EdgeInsets.only(top: 4, bottom: 110),
+                padding: const EdgeInsets.only(top: 4, bottom: 120),
                 itemCount: recent.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (context, index) =>

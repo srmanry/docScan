@@ -5,64 +5,64 @@ class SubscriptionPage extends StatelessWidget {
 
   static const _plans = [
     _Plan(
-      name: 'Free',
-      price: '৳0',
-      cadence: '/month',
-      summary: 'Best for light testing and occasional scans.',
-      ocrLimit: '20 OCR pages',
-      aiLimit: '10 AI actions',
+      name: 'Weekly',
+      price: '\$1.49',
+      cadence: '/7 days',
+      summary: 'Short plan for urgent document work without committing long term.',
+      ocrLimit: '40 OCR pages',
+      aiLimit: '20 AI actions',
       accent: Color(0xFF0F766E),
       features: [
-        'Guest access included',
-        'Basic scan and AI tools',
-        'No card required',
+        'Best for occasional bursts of scanning',
+        'Google account billing only',
+        'No rollover on unused quota',
       ],
-      cta: 'Current Plan',
+      cta: 'Choose Weekly',
     ),
     _Plan(
-      name: 'Basic',
-      price: '৳299',
+      name: 'Monthly',
+      price: '\$3.99',
       cadence: '/month',
-      summary: 'Balanced plan for regular personal use.',
-      ocrLimit: '300 OCR pages',
-      aiLimit: '100 AI actions',
+      summary: 'Balanced plan for students and office users who scan regularly.',
+      ocrLimit: '220 OCR pages',
+      aiLimit: '90 AI actions',
       accent: Color(0xFF1D4ED8),
       recommended: true,
       features: [
-        'Good for students and office users',
-        'Monthly usage cap protects costs',
-        'Can buy extra credits if needed',
+        'Best value if you use the app every week',
+        'Built around capped OCR and AI usage',
+        'Extra credit packs are available separately',
       ],
-      cta: 'Choose Basic',
+      cta: 'Choose Monthly',
     ),
     _Plan(
-      name: 'Pro',
-      price: '৳799',
-      cadence: '/month',
-      summary: 'For heavier document reading without going unlimited.',
-      ocrLimit: '1500 OCR pages',
-      aiLimit: '500 AI actions',
+      name: '3 Months',
+      price: '\$9.99',
+      cadence: '/3 months',
+      summary: 'Longer plan with a modest discount, but still capped to stay safe.',
+      ocrLimit: '750 OCR pages',
+      aiLimit: '300 AI actions',
       accent: Color(0xFF7C3AED),
       features: [
-        'Higher monthly cap',
-        'Priority for power users',
-        'Still capped to avoid loss',
+        'Lower effective monthly price than monthly billing',
+        'No plan extends past three months',
+        'Made for steady but controlled use',
       ],
-      cta: 'Choose Pro',
+      cta: 'Choose 3 Months',
     ),
   ];
 
   static const _packs = [
     _AddonPack(
       title: 'Extra OCR Pack',
-      price: '৳99',
+      price: '\$0.99',
       detail: '100 extra OCR pages',
       icon: Icons.document_scanner_outlined,
     ),
     _AddonPack(
       title: 'Extra AI Pack',
-      price: '৳149',
-      detail: '50 extra AI actions',
+      price: '\$1.29',
+      detail: '40 extra AI actions',
       icon: Icons.psychology_outlined,
     ),
   ];
@@ -89,7 +89,7 @@ class SubscriptionPage extends StatelessWidget {
           Text('Plans', style: theme.textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
-            'No unlimited plan. Every tier has a monthly cap so API costs stay predictable.',
+            'No guest billing and no unlimited plan. Every paid tier stays capped so OCR and AI costs remain predictable.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -118,13 +118,13 @@ class SubscriptionPage extends StatelessWidget {
           const _SafetyPoint(
             icon: Icons.lock_outline,
             title: 'No unlimited usage',
-            body: 'Heavy users cannot keep consuming OCR and AI forever on a low monthly fee.',
+            body: 'Heavy users cannot consume OCR pages and AI responses forever on one low fee.',
           ),
           const SizedBox(height: 10),
           const _SafetyPoint(
             icon: Icons.query_stats_outlined,
-            title: 'Usage is easy to meter',
-            body: 'OCR is counted by page and AI is counted by action, so costs stay measurable.',
+            title: 'Built around current Google API costs',
+            body: 'Cloud Vision page OCR and Gemini AI usage both scale with usage, so short capped plans are safer than open-ended ones.',
           ),
           const SizedBox(height: 10),
           const _SafetyPoint(
@@ -139,10 +139,10 @@ class SubscriptionPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Suggested Launch Rule', style: theme.textTheme.titleMedium),
+                  Text('Pricing Guardrail', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Text(
-                    'Launch with Free + Basic first. Add Pro only after real usage data shows people need it.',
+                    'Keep subscriptions to weekly, monthly, and 3-month terms only. Do not add longer plans until backend usage metering is live.',
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
@@ -191,7 +191,7 @@ class _HeroCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'Keep pricing simple, capped, and predictable.',
+              'Keep plans short, capped, and tied to Google sign-in.',
               style: theme.textTheme.headlineMedium?.copyWith(
                 color: Colors.white,
                 height: 1.1,
@@ -199,7 +199,7 @@ class _HeroCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Monthly caps + add-on credits are safer than unlimited subscriptions for OCR and AI apps.',
+              'These caps are sized around Cloud Vision OCR and Gemini 2.5 Flash usage so the app does not drift into loss too quickly.',
               style: TextStyle(color: Colors.white70, height: 1.45),
             ),
             const SizedBox(height: 18),
@@ -209,7 +209,7 @@ class _HeroCard extends StatelessWidget {
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF0F172A),
               ),
-              child: const Text('Use This Pricing Model'),
+              child: const Text('Use These Capped Plans'),
             ),
           ],
         ),

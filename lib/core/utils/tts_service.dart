@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 /// Maps the language names used in the UI's language pickers to TTS locale
@@ -21,17 +22,29 @@ const Map<String, String> ttsLocales = {
 /// utterance plays at a time.
 class TtsService {
   TtsService._() {
-    _tts.setCompletionHandler(() => _speaking = false);
-    _tts.setCancelHandler(() => _speaking = false);
-    _tts.setErrorHandler((_) => _speaking = false);
+    _tts.setCompletionHandler(() => _setSpeaking(false));
+    _tts.setCancelHandler(() => _setSpeaking(false));
+    _tts.setErrorHandler((_) => _setSpeaking(false));
   }
 
   static final TtsService instance = TtsService._();
 
   final FlutterTts _tts = FlutterTts();
-  bool _speaking = false;
+  double _rate = 0.5;
 
-  bool get isSpeaking => _speaking;
+  /// Whether speech is playing. A listenable so the speaker button also
+  /// settles down when an utterance finishes on its own.
+  final ValueNotifier<bool> speakingListenable = ValueNotifier(false);
+
+  bool get isSpeaking => speakingListenable.value;
+
+  void _setSpeaking(bool value) => speakingListenable.value = value;
+
+  /// Read-aloud pace, kept here so every future utterance uses it.
+  Future<void> setSpeechRate(double rate) async {
+    _rate = rate;
+    await _tts.setSpeechRate(rate);
+  }
 
   Future<void> speak(String text, {String? languageOrCode}) async {
     await stop();
@@ -42,12 +55,13 @@ class TtsService {
       await _tts.setLanguage(locale);
     }
 
-    _speaking = true;
+    await _tts.setSpeechRate(_rate);
+    _setSpeaking(true);
     await _tts.speak(text);
   }
 
   Future<void> stop() async {
     await _tts.stop();
-    _speaking = false;
+    _setSpeaking(false);
   }
 }

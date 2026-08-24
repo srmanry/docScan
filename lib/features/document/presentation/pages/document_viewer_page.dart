@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doc_sense/core/theme/app_theme.dart';
 import 'package:doc_sense/core/utils/text_structure.dart';
 import 'package:doc_sense/core/widgets/app_dialogs.dart';
 import 'package:doc_sense/core/utils/tts_service.dart';
+import 'package:doc_sense/core/widgets/animated_speaker_icon.dart';
 import 'package:doc_sense/features/ai_assistant/presentation/pages/ai_assistant_page.dart';
 import 'package:doc_sense/features/document/domain/entities/scanned_document.dart';
+import 'package:doc_sense/features/settings/presentation/providers/settings_provider.dart';
 
-class DocumentViewerPage extends StatefulWidget {
+class DocumentViewerPage extends ConsumerStatefulWidget {
   final ScannedDocument document;
 
   const DocumentViewerPage({super.key, required this.document});
 
   @override
-  State<DocumentViewerPage> createState() => _DocumentViewerPageState();
+  ConsumerState<DocumentViewerPage> createState() => _DocumentViewerPageState();
 }
 
-class _DocumentViewerPageState extends State<DocumentViewerPage> {
+class _DocumentViewerPageState extends ConsumerState<DocumentViewerPage> {
   final _tts = TtsService.instance;
   final _documentScrollController = ScrollController();
-  bool _speaking = false;
   Future<void> _toggleSpeak() async {
     if (_tts.isSpeaking) {
       await _tts.stop();
@@ -29,7 +31,6 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
         languageOrCode: widget.document.detectedLanguage,
       );
     }
-    if (mounted) setState(() => _speaking = _tts.isSpeaking);
   }
 
   @override
@@ -40,11 +41,13 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
   }
 
   Future<void> _startSummarize(ScannedDocument doc) async {
-    final language = await pickLanguage(
-      context,
-      title: 'Summarize document',
-      subtitle: 'Choose the language for the summary.',
-    );
+    final language =
+        ref.read(settingsProvider).defaultLanguage ??
+        await pickLanguage(
+          context,
+          title: 'Summarize document',
+          subtitle: 'Choose the language for the summary.',
+        );
     if (language == null || language.isEmpty || !mounted) return;
     _openAiScreen(
       context,
@@ -55,11 +58,13 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
   }
 
   Future<void> _startTranslate(ScannedDocument doc) async {
-    final language = await pickLanguage(
-      context,
-      title: 'Translate document',
-      subtitle: 'Choose the language to translate into.',
-    );
+    final language =
+        ref.read(settingsProvider).defaultLanguage ??
+        await pickLanguage(
+          context,
+          title: 'Translate document',
+          subtitle: 'Choose the language to translate into.',
+        );
     if (language == null || language.isEmpty || !mounted) return;
     _openAiScreen(
       context,
@@ -86,6 +91,10 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final textScale = ref.watch(settingsProvider).textSize.scale;
+    final bodyStyle = theme.textTheme.bodyLarge?.apply(
+      fontSizeFactor: textScale,
+    );
     final doc = widget.document;
     final wordCount = doc.extractedText.trim().isEmpty
         ? 0
@@ -98,7 +107,7 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Material(
-              color: AppColors.peachMist,
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(14),
               child: InkWell(
                 borderRadius: BorderRadius.circular(14),
@@ -106,11 +115,15 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
                 child: SizedBox(
                   width: 42,
                   height: 42,
-                  child: Icon(
-                    _speaking
-                        ? Icons.stop_circle_outlined
-                        : Icons.volume_up_outlined,
-                    color: AppColors.buntOrange,
+                  child: Center(
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: _tts.speakingListenable,
+                      builder: (context, speaking, _) => AnimatedSpeakerIcon(
+                        speaking: speaking,
+                        color: AppColors.buntOrange,
+                        size: 30,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -201,11 +214,11 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
                             child: doc.extractedText.isEmpty
                                 ? Text(
                                     'No text was found in this document.',
-                                    style: theme.textTheme.bodyLarge,
+                                    style: bodyStyle,
                                   )
                                 : _StructuredText(
                                     text: doc.extractedText,
-                                    baseStyle: theme.textTheme.bodyLarge,
+                                    baseStyle: bodyStyle,
                                   ),
                           ),
                         ),

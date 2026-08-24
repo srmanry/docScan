@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:doc_sense/core/theme/app_theme.dart';
 
@@ -10,7 +12,9 @@ class AppBottomNavItem {
 
 /// Floating pill-style bottom nav from the Figma design: a rounded card
 /// riding above the screen edge, with the active tab rendered as a filled
-/// orange pill and inactive tabs as plain icon-over-label.
+/// orange pill and inactive tabs as plain icon-over-label. The bar is
+/// frosted — the page scrolls under it through a blur (the shell sets
+/// extendBody so there is something to blur).
 class AppBottomNav extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
@@ -22,20 +26,40 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.warmWhite,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.softBorder),
-          boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8))],
+          boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.07), blurRadius: 18, offset: const Offset(0, 8))],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (var i = 0; i < items.length; i++)
-              _NavItem(item: items[i], selected: i == selectedIndex, onTap: () => onDestinationSelected(i)),
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                // Thin at the top so whatever scrolls under shows through,
+                // denser at the bottom to keep the labels readable.
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.warmWhite.withValues(alpha: 0.22),
+                    AppColors.warmWhite.withValues(alpha: 0.45),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    _NavItem(item: items[i], selected: i == selectedIndex, onTap: () => onDestinationSelected(i)),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

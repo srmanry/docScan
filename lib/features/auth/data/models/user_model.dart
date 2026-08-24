@@ -23,7 +23,7 @@ class UserModel extends AppUser {
   factory UserModel.fromFirebaseUser(User user) => UserModel(
         id: user.uid,
         email: user.email ?? '',
-        displayName: user.displayName ?? (user.isAnonymous ? 'Guest User' : null),
+        displayName: user.displayName,
         photoUrl: user.photoURL,
         isPremium: false,
       );

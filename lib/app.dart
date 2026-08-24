@@ -16,7 +16,9 @@ class DocAiApp extends ConsumerWidget {
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      // The palette is a fixed light brand palette, so the app stays light
+      // whatever the phone is set to.
+      themeMode: ThemeMode.light,
       builder: (context, child) {
         final theme = Theme.of(context);
         final overlayStyle = theme.brightness == Brightness.dark

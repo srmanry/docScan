@@ -81,25 +81,8 @@ class LoginPage extends ConsumerWidget {
                           ),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: state is AuthLoading
-                          ? null
-                          : () => ref.read(authProvider.notifier).signInAnonymously(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        side: BorderSide(
-                          color: theme.colorScheme.onPrimary.withValues(alpha: 0.45),
-                        ),
-                      ),
-                      icon: const Icon(Icons.person_outline),
-                      label: const Text('Continue as Guest'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   Text(
-                    'Use Google for stable account tracking. Guest mode is only for testing.',
+                    'Use Google to keep scans, usage limits, and future subscriptions tied to one account.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onPrimary.withValues(alpha: 0.82),

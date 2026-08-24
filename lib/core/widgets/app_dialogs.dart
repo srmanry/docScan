@@ -43,6 +43,49 @@ Future<String?> pickLanguage(
   );
 }
 
+/// Single-button dialog for messages that need nothing back from the user.
+Future<void> showInfoDialog(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String message,
+  String closeLabel = 'Got it',
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => ConfirmDialog(
+      icon: icon,
+      title: title,
+      message: message,
+      confirmLabel: closeLabel,
+      singleAction: true,
+    ),
+  );
+}
+
+/// Yes/no dialog in the same shape as the other app dialogs. Returns true
+/// only when the user taps the confirm button.
+Future<bool> showConfirmDialog(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String message,
+  required String confirmLabel,
+  bool destructive = false,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => ConfirmDialog(
+      icon: icon,
+      title: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      destructive: destructive,
+    ),
+  );
+  return confirmed ?? false;
+}
+
 class LanguagePickerDialog extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -498,6 +541,135 @@ class TextPromptDialogState extends State<TextPromptDialog> {
                         ),
                       );
                     },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ConfirmDialog extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  final String confirmLabel;
+  final bool destructive;
+
+  /// Drops the Cancel button, for dialogs that only need acknowledging.
+  final bool singleAction;
+
+  const ConfirmDialog({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.confirmLabel,
+    this.destructive = false,
+    this.singleAction = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = destructive ? theme.colorScheme.error : AppColors.buntOrange;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.warmWhite,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.softBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 28,
+              offset: const Offset(0, 14),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, size: 20, color: accent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.ink.withValues(alpha: 0.7),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                if (!singleAction) ...[
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.ink.withValues(alpha: 0.7),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          side: const BorderSide(color: AppColors.softBorder),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: Text(
+                      confirmLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ],

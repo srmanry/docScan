@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doc_sense/core/theme/app_theme.dart';
 import 'package:doc_sense/core/utils/tts_service.dart';
+import 'package:doc_sense/core/widgets/animated_speaker_icon.dart';
 import 'package:doc_sense/core/widgets/app_dialogs.dart';
 import 'package:doc_sense/features/ai_assistant/domain/entities/chat_turn.dart';
 import 'package:doc_sense/features/ai_assistant/presentation/providers/ai_provider.dart';
 import 'package:doc_sense/features/document/domain/entities/scanned_document.dart';
+import 'package:doc_sense/features/settings/presentation/providers/settings_provider.dart';
 
 enum _Action { summarize, translate, ask }
 
@@ -39,7 +41,6 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   final _chat = <_ChatTurn>[];
   _Action? _activeAction;
   String? _lastLanguage;
-  bool _speaking = false;
   bool _asking = false;
 
   /// Questions are answered from the document unless the user asks straight
@@ -93,12 +94,17 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     });
   }
 
-  Future<void> _pickLanguageAndSummarize() async {
-    final language = await pickLanguage(
-      context,
-      title: 'Summarize document',
-      subtitle: 'Choose the language for the summary.',
-    );
+  Future<void> _pickLanguageAndSummarize({bool useDefault = true}) async {
+    final preferred = useDefault
+        ? ref.read(settingsProvider).defaultLanguage
+        : null;
+    final language =
+        preferred ??
+        await pickLanguage(
+          context,
+          title: 'Summarize document',
+          subtitle: 'Choose the language for the summary.',
+        );
     if (language == null || !mounted) return;
     await _runSummarize(language);
   }
@@ -114,12 +120,17 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
         .summarize(widget.document.extractedText, language: language);
   }
 
-  Future<void> _pickLanguageAndTranslate() async {
-    final language = await pickLanguage(
-      context,
-      title: 'Translate document',
-      subtitle: 'Choose the language to translate into.',
-    );
+  Future<void> _pickLanguageAndTranslate({bool useDefault = true}) async {
+    final preferred = useDefault
+        ? ref.read(settingsProvider).defaultLanguage
+        : null;
+    final language =
+        preferred ??
+        await pickLanguage(
+          context,
+          title: 'Translate document',
+          subtitle: 'Choose the language to translate into.',
+        );
     if (language == null || !mounted) return;
     await _runTranslate(language);
   }
@@ -248,7 +259,6 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     } else {
       await _tts.speak(text, languageOrCode: _lastLanguage);
     }
-    if (mounted) setState(() => _speaking = _tts.isSpeaking);
   }
 
   @override
@@ -265,6 +275,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(aiProvider);
     final theme = Theme.of(context);
+    final textScale = ref.watch(settingsProvider).textSize.scale;
     final entryAction =
         _activeAction ??
         switch (widget.initialAction) {
@@ -284,21 +295,24 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
         }),
         actions: [
           if (state case AiSuccess(:final response))
-            IconButton(
-              icon: Icon(
-                _speaking
-                    ? Icons.stop_circle_outlined
-                    : Icons.volume_up_outlined,
+            ValueListenableBuilder<bool>(
+              valueListenable: _tts.speakingListenable,
+              builder: (context, speaking, _) => IconButton(
+                icon: AnimatedSpeakerIcon(
+                  speaking: speaking,
+                  color: AppColors.buntOrange,
+                  size: 30,
+                ),
+                tooltip: speaking ? 'Stop reading' : 'Read aloud',
+                onPressed: () => _toggleSpeak(response.content),
               ),
-              tooltip: _speaking ? 'Stop reading' : 'Read aloud',
-              onPressed: () => _toggleSpeak(response.content),
             ),
         ],
       ),
       body: Column(
         children: [
           if (entryAction == _Action.ask)
-            Expanded(child: _buildAskChat(theme))
+            Expanded(child: _buildAskChat(theme, textScale))
           else
             Expanded(
               child: switch (state) {
@@ -354,9 +368,9 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                                 padding: const EdgeInsets.only(right: 12),
                                 child: _MarkdownLiteText(
                                   _tidyBullets(response.content),
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    height: 1.5,
-                                  ),
+                                  style: theme.textTheme.bodyLarge
+                                      ?.apply(fontSizeFactor: textScale)
+                                      .copyWith(height: 1.5),
                                 ),
                               ),
                             ),
@@ -381,13 +395,13 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
 
   Future<void> _changeLanguage(_Action action) async {
     if (action == _Action.summarize) {
-      await _pickLanguageAndSummarize();
+      await _pickLanguageAndSummarize(useDefault: false);
     } else if (action == _Action.translate) {
-      await _pickLanguageAndTranslate();
+      await _pickLanguageAndTranslate(useDefault: false);
     }
   }
 
-  Widget _buildAskChat(ThemeData theme) {
+  Widget _buildAskChat(ThemeData theme, double textScale) {
     if (_chat.isEmpty) {
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
@@ -433,6 +447,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
         final turn = _chat[index];
         return _ChatBubble(
           turn: turn,
+          textScale: textScale,
           tidyBullets: _tidyBullets,
           wordCount: _wordCount,
           onCopy: () => _copyToClipboard(turn.text),
@@ -628,12 +643,14 @@ class _SuggestionChip extends StatelessWidget {
 
 class _ChatBubble extends StatelessWidget {
   final _ChatTurn turn;
+  final double textScale;
   final String Function(String) tidyBullets;
   final int Function(String) wordCount;
   final VoidCallback onCopy;
 
   const _ChatBubble({
     required this.turn,
+    required this.textScale,
     required this.tidyBullets,
     required this.wordCount,
     required this.onCopy,
@@ -642,6 +659,9 @@ class _ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bodyStyle = theme.textTheme.bodyLarge?.apply(
+      fontSizeFactor: textScale,
+    );
 
     if (turn.kind == _TurnKind.user) {
       return Align(
@@ -660,7 +680,7 @@ class _ChatBubble extends StatelessWidget {
           ),
           child: Text(
             turn.text,
-            style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white),
+            style: bodyStyle?.copyWith(color: Colors.white),
           ),
         ),
       );
@@ -688,7 +708,7 @@ class _ChatBubble extends StatelessWidget {
           if (isError)
             Text(
               turn.text,
-              style: theme.textTheme.bodyLarge?.copyWith(
+              style: bodyStyle?.copyWith(
                 color: AppColors.buntOrange,
                 fontWeight: FontWeight.w600,
               ),
@@ -696,10 +716,7 @@ class _ChatBubble extends StatelessWidget {
           else
             _MarkdownLiteText(
               tidyBullets(turn.text),
-              style: theme.textTheme.bodyLarge?.copyWith(
-                height: 1.5,
-                color: AppColors.ink,
-              ),
+              style: bodyStyle?.copyWith(height: 1.5, color: AppColors.ink),
             ),
           if (!isError)
             Row(

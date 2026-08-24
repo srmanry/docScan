@@ -73,7 +73,10 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
     return Scaffold(
       extendBody: true,
+      // bottom: false so the list runs under the frosted nav bar instead of
+      // stopping above it.
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             Padding(
@@ -127,7 +130,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   }
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
                     children: _buildGroupedList(filtered, theme),
                   );
                 },
